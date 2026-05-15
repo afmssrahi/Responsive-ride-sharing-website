@@ -1,0 +1,535 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  DRIVER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+  DEACTIVATED
+}
+
+enum RideType {
+  ON_DEMAND           // Immediate single-user ride
+  DRIVER_CREATED_SHARED  // Driver publishes seats (BlaBlaCar-style)
+  USER_BOOKED_SHARED  // User books but opens remaining seats
+}
+
+enum RideStatus {
+  PENDING        // Just created, not yet confirmed
+  CONFIRMED      // Driver accepted / published
+  IN_PROGRESS    // Trip started
+  COMPLETED      // Trip finished
+  CANCELLED      // Cancelled by any party
+}
+
+enum BookingStatus {
+  PENDING    // Request made, awaiting driver approval
+  APPROVED   // Driver accepted the passenger
+  REJECTED   // Driver declined
+  CANCELLED  // Passenger cancelled
+  COMPLETED  // Ride finished
+}
+
+enum VehicleType {
+  SEDAN
+  SUV
+  HATCHBACK
+  MINIVAN
+  MICROBUS
+  OTHER
+}
+
+enum VehicleStatus {
+  ACTIVE
+  UNDER_REVIEW
+  DEACTIVATED
+}
+
+enum DocumentType {
+  NID
+  LICENCE
+  REGISTRATION
+  FITNESS
+  INSURANCE
+  BACKGROUND_CHECK
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PaymentMethodType {
+  CASH
+  BKASH
+  NAGAD
+  ROCKET
+  CARD
+}
+
+enum PayoutSchedule {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum NotificationType {
+  RIDE_REQUEST
+  RIDE_CONFIRMED
+  RIDE_CANCELLED
+  DRIVER_ARRIVED
+  RIDE_COMPLETED
+  PAYMENT_RECEIVED
+  SEAT_APPROVED
+  SEAT_REJECTED
+  SYSTEM
+}
+
+// ─────────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────────
+
+model User {
+  id              String     @id @default(uuid())
+  name            String
+  email           String     @unique
+  phone           String?
+  passwordHash    String
+  role            Role       @default(USER)
+  avatar          String?    // Initials e.g. "FH"
+  status          UserStatus @default(ACTIVE)
+  isEmailVerified Boolean    @default(false)
+  refreshToken    String?    @db.Text
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  driverProfile        DriverProfile?
+  vehicles             Vehicle[]
+  ridesCreated         Ride[]              @relation("RideCreator")
+  ridesAsDriver        Ride[]              @relation("RideDriver")
+  rideParticipants     RideParticipant[]
+  shareRequests        RideShareRequest[]
+  paymentMethods       PaymentMethod[]
+  savedPlaces          SavedPlace[]
+  ratingsGiven         Rating[]            @relation("RatingFrom")
+  ratingsReceived      Rating[]            @relation("RatingTo")
+  notifications        Notification[]
+  notificationPrefs    NotificationPreference?
+  adminActivityLogs    AdminActivityLog[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DRIVER PROFILE
+// ─────────────────────────────────────────────────────────────────
+
+model DriverProfile {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  nid              String?
+  city             String?
+  bio              String?   @db.Text
+  rating           Float     @default(0)
+  totalRides       Int       @default(0)
+  totalEarnings    Float     @default(0)
+  isOnline         Boolean   @default(false)
+  isApproved       Boolean   @default(false)
+  acceptanceRate   Float     @default(100)
+  completionRate   Float     @default(100)
+  // Work preferences
+  preferredZones   String?   // Comma-separated zones
+  maxTripDistance  Int       @default(50) // km
+  airportTrips     Boolean   @default(true)
+  nightShift       Boolean   @default(false)
+  // Payout
+  payoutMethod     String    @default("bKash")
+  payoutNumber     String?
+  payoutSchedule   PayoutSchedule @default(WEEKLY)
+  // Timestamps
+  verifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents        Document[]
+
+  @@map("driver_profiles")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// VEHICLE
+// ─────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id          String        @id @default(uuid())
+  ownerId     String
+  make        String
+  model       String
+  year        Int
+  color       String
+  type        VehicleType   @default(SEDAN)
+  plate       String        @unique
+  totalSeats  Int           @default(4)
+  status      VehicleStatus @default(ACTIVE)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  rides       Ride[]
+
+  @@map("vehicles")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DOCUMENT
+// ─────────────────────────────────────────────────────────────────
+
+model Document {
+  id              String             @id @default(uuid())
+  driverProfileId String
+  type            DocumentType
+  filePath        String
+  status          VerificationStatus @default(PENDING)
+  reviewNote      String?
+  uploadedAt      DateTime           @default(now())
+  verifiedAt      DateTime?
+
+  driverProfile   DriverProfile      @relation(fields: [driverProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([driverProfileId, type])
+  @@map("documents")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RIDE
+// ─────────────────────────────────────────────────────────────────
+
+model Ride {
+  id               String      @id @default(uuid())
+  rideCode         String      @unique
+  type             RideType    @default(ON_DEMAND)
+  status           RideStatus  @default(PENDING)
+  creatorId        String
+  driverId         String?
+  vehicleId        String?
+
+  // Route
+  pickupLocation   String
+  pickupLat        Float
+  pickupLng        Float
+  dropoffLocation  String
+  dropoffLat       Float
+  dropoffLng       Float
+  distance         Float?      // km
+  duration         Int?        // minutes
+
+  // Timing
+  departureTime    DateTime?
+  estimatedArrival DateTime?
+
+  // Seating (for shared rides)
+  totalSeats       Int         @default(1)
+  availableSeats   Int         @default(1)
+  pricePerSeat     Float?
+
+  // Pricing (for on-demand)
+  baseFare         Float?
+  totalFare        Float?
+
+  // Payment
+  paymentMethod    PaymentMethodType @default(CASH)
+  promoCodeId      String?
+
+  // Sharing
+  sharingEnabled   Boolean     @default(false)
+  notes            String?     @db.Text
+  cancelReason     String?
+
+  // Timestamps
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  // Relations
+  creator          User              @relation("RideCreator", fields: [creatorId], references: [id])
+  driver           User?             @relation("RideDriver", fields: [driverId], references: [id])
+  vehicle          Vehicle?          @relation(fields: [vehicleId], references: [id])
+  participants     RideParticipant[]
+  shareRequests    RideShareRequest[]
+  ratings          Rating[]
+  route            Route?
+  promoCode        PromoCode?        @relation(fields: [promoCodeId], references: [id])
+
+  @@map("rides")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RIDE PARTICIPANT (confirmed passengers on a shared ride)
+// ─────────────────────────────────────────────────────────────────
+
+model RideParticipant {
+  id               String        @id @default(uuid())
+  rideId           String
+  userId           String
+  seatsBooked      Int           @default(1)
+  status           BookingStatus @default(APPROVED)
+  fareAmount       Float?
+
+  // Passenger's pickup/dropoff (may differ from ride's main route)
+  pickupLocation   String?
+  pickupLat        Float?
+  pickupLng        Float?
+  dropoffLocation  String?
+  dropoffLat       Float?
+  dropoffLng       Float?
+
+  boardedAt        DateTime?
+  droppedAt        DateTime?
+  createdAt        DateTime      @default(now())
+
+  ride             Ride          @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  user             User          @relation(fields: [userId], references: [id])
+
+  @@unique([rideId, userId])
+  @@map("ride_participants")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RIDE SHARE REQUEST (pending requests from passengers)
+// ─────────────────────────────────────────────────────────────────
+
+model RideShareRequest {
+  id               String        @id @default(uuid())
+  rideId           String
+  userId           String
+  seatsRequested   Int           @default(1)
+  status           BookingStatus @default(PENDING)
+  message          String?
+
+  // Passenger's preferred pickup/dropoff
+  pickupLocation   String?
+  pickupLat        Float?
+  pickupLng        Float?
+  dropoffLocation  String?
+  dropoffLat       Float?
+  dropoffLng       Float?
+
+  createdAt        DateTime      @default(now())
+  respondedAt      DateTime?
+
+  ride             Ride          @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  user             User          @relation(fields: [userId], references: [id])
+
+  @@unique([rideId, userId])
+  @@map("ride_share_requests")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ROUTE (for future GPS / polyline storage)
+// ─────────────────────────────────────────────────────────────────
+
+model Route {
+  id               String   @id @default(uuid())
+  rideId           String   @unique
+  waypoints        Json?    // Array of { lat, lng }
+  encodedPolyline  String?  @db.Text
+  distanceMeters   Int?
+  durationSeconds  Int?
+  createdAt        DateTime @default(now())
+
+  ride             Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+
+  @@map("routes")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RATING
+// ─────────────────────────────────────────────────────────────────
+
+model Rating {
+  id          String   @id @default(uuid())
+  rideId      String
+  fromUserId  String
+  toUserId    String
+  rating      Int      // 1-5
+  comment     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  ride        Ride     @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  fromUser    User     @relation("RatingFrom", fields: [fromUserId], references: [id])
+  toUser      User     @relation("RatingTo", fields: [toUserId], references: [id])
+
+  @@unique([rideId, fromUserId, toUserId])
+  @@map("ratings")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PAYMENT METHOD
+// ─────────────────────────────────────────────────────────────────
+
+model PaymentMethod {
+  id          String            @id @default(uuid())
+  userId      String
+  type        PaymentMethodType
+  details     Json              // { number, last4, expiry, etc. }
+  isDefault   Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payment_methods")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// SAVED PLACE
+// ─────────────────────────────────────────────────────────────────
+
+model SavedPlace {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  address   String
+  lat       Float?
+  lng       Float?
+  icon      String   @default("MapPin")
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_places")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PROMO CODE
+// ─────────────────────────────────────────────────────────────────
+
+model PromoCode {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  discountType  String   @default("PERCENT") // PERCENT | FIXED
+  discountValue Float
+  minFare       Float    @default(0)
+  validFrom     DateTime
+  validUntil    DateTime
+  maxUses       Int      @default(100)
+  currentUses   Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  rides         Ride[]
+
+  @@map("promo_codes")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// NOTIFICATION
+// ─────────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  body      String           @db.Text
+  type      NotificationType @default(SYSTEM)
+  isRead    Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// NOTIFICATION PREFERENCES
+// ─────────────────────────────────────────────────────────────────
+
+model NotificationPreference {
+  userId         String  @id
+  rideUpdates    Boolean @default(true)
+  driverArrival  Boolean @default(true)
+  receipts       Boolean @default(true)
+  promotions     Boolean @default(false)
+  emailAlerts    Boolean @default(true)
+  smsAlerts      Boolean @default(false)
+  weeklyReport   Boolean @default(false)
+
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ADMIN ACTIVITY LOG
+// ─────────────────────────────────────────────────────────────────
+
+model AdminActivityLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  action    String
+  target    String
+  targetId  String?
+  details   String?  @db.Text
+  type      String   @default("neutral") // success | warning | neutral
+  createdAt DateTime @default(now())
+
+  admin     User     @relation(fields: [adminId], references: [id])
+
+  @@map("admin_activity_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PLATFORM SETTINGS
+// ─────────────────────────────────────────────────────────────────
+
+model PlatformSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RIDE TYPE CONFIG
+// ─────────────────────────────────────────────────────────────────
+
+model RideTypeConfig {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  description  String
+  baseFare     Float    @default(80)
+  pricePerKm   Float    @default(18)
+  capacity     Int      @default(3)
+  eta          String   @default("3 min")
+  features     Json     // Array of strings
+  isActive     Boolean  @default(true)
+
+  @@map("ride_type_configs")
+}
