@@ -58,14 +58,38 @@ export async function getEarnings(userId: string, period: 'week' | 'month' = 'we
     select: { completedAt: true, totalFare: true, pricePerSeat: true, totalSeats: true, availableSeats: true },
   });
 
-  const total = rides.reduce((sum, r) => {
+  const totalEarnings = rides.reduce((sum, r) => {
     const fare = r.pricePerSeat ? r.pricePerSeat * (r.totalSeats - r.availableSeats) : (r.totalFare || 0);
     return sum + fare;
   }, 0);
 
   const profile = await prisma.driverProfile.findUnique({ where: { userId } });
 
-  return { total, trips: rides.length, profile };
+  // Build daily breakdown
+  const days = period === 'week' ? 7 : 30;
+  const dailyMap: Record<string, number> = {};
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toLocaleDateString('en-BD', { weekday: 'short', month: 'short', day: 'numeric' });
+    dailyMap[key] = 0;
+  }
+  rides.forEach(r => {
+    if (!r.completedAt) return;
+    const key = r.completedAt.toLocaleDateString('en-BD', { weekday: 'short', month: 'short', day: 'numeric' });
+    const fare = r.pricePerSeat ? r.pricePerSeat * (r.totalSeats - r.availableSeats) : (r.totalFare || 0);
+    if (key in dailyMap) dailyMap[key] = (dailyMap[key] || 0) + fare;
+  });
+
+  const dailyBreakdown = Object.entries(dailyMap).map(([day, amount]) => ({ day, amount }));
+
+  return {
+    totalEarnings,
+    totalTrips: rides.length,
+    avgPerTrip: rides.length ? Math.round(totalEarnings / rides.length) : 0,
+    dailyBreakdown,
+    profile,
+  };
 }
 
 export async function getRatings(userId: string, page = 1, limit = 10) {

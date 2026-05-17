@@ -102,6 +102,7 @@ enum NotificationType {
   PAYMENT_RECEIVED
   SEAT_APPROVED
   SEAT_REJECTED
+  CHAT_MESSAGE
   SYSTEM
 }
 
@@ -137,6 +138,7 @@ model User {
   notifications        Notification[]
   notificationPrefs    NotificationPreference?
   adminActivityLogs    AdminActivityLog[]
+  messagesSent         Message[]
 
   @@map("users")
 }
@@ -283,6 +285,7 @@ model Ride {
   ratings          Rating[]
   route            Route?
   promoCode        PromoCode?        @relation(fields: [promoCodeId], references: [id])
+  conversation     Conversation?
 
   @@map("rides")
 }
@@ -532,4 +535,37 @@ model RideTypeConfig {
   isActive     Boolean  @default(true)
 
   @@map("ride_type_configs")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CONVERSATION (one per ride — chat between user and driver)
+// ─────────────────────────────────────────────────────────────────
+
+model Conversation {
+  id        String    @id @default(uuid())
+  rideId    String    @unique
+  createdAt DateTime  @default(now())
+
+  ride      Ride      @relation(fields: [rideId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@map("conversations")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MESSAGE
+// ─────────────────────────────────────────────────────────────────
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  body           String       @db.Text
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id])
+
+  @@map("messages")
 }

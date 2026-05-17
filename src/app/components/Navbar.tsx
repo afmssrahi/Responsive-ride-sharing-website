@@ -45,7 +45,7 @@ export function Navbar() {
               className="text-gray-900"
               style={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "-0.02em" }}
             >
-              swift<span className="text-green-600">ride</span>
+              uni<span className="text-green-600">ride</span>
             </span>
           </Link>
 

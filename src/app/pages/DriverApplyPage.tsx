@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Eye, EyeOff, ArrowLeft, Check, ChevronRight } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { ApiError } from "../services/api";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -46,13 +48,14 @@ export function DriverApplyPage() {
     plate: "",
   });
 
-  // Step 3 – Documents (mock file names)
-  const [docs, setDocs] = useState({
-    nidPhoto: "",
-    licence: "",
-    registration: "",
-    fitness: "",
-    insurance: "",
+  const { login } = useAuth();
+  // Step 3 – Documents (actual files)
+  const [docs, setDocs] = useState<{ [key: string]: File | null }>({
+    nidPhoto: null,
+    licence: null,
+    registration: null,
+    fitness: null,
+    insurance: null,
   });
 
   // Step 4 – Password
@@ -120,7 +123,7 @@ export function DriverApplyPage() {
     setError("");
   }
 
-  function submitStep4(e: React.FormEvent) {
+  async function submitStep4(e: React.FormEvent) {
     e.preventDefault();
     if (!password.pw || password.pw.length < 8) {
       setError("Password must be at least 8 characters.");
@@ -131,10 +134,40 @@ export function DriverApplyPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("name", personal.name);
+      formData.append("email", personal.email);
+      formData.append("phone", personal.phone);
+      formData.append("nid", personal.nid);
+      formData.append("city", personal.city);
+      formData.append("password", password.pw);
+      
+      formData.append("vehicleMake", vehicle.make);
+      formData.append("vehicleModel", vehicle.model);
+      formData.append("vehicleYear", vehicle.year);
+      formData.append("vehicleColor", vehicle.color);
+      formData.append("vehicleType", vehicle.type.toUpperCase() || "SEDAN");
+      formData.append("vehiclePlate", vehicle.plate);
+      formData.append("vehicleSeats", "4");
+
+      Object.values(docs).forEach(file => {
+        if (file) formData.append("documents", file);
+      });
+
+      const { auth } = await import("../services/api");
+      await auth.driverApply(formData);
+      
+      await login(personal.email, password.pw);
       navigate("/drive/apply/submitted");
-    }, 1600);
+    } catch (err: any) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError(err?.message || "Failed to submit application. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const pwStrength = Math.min(4, Math.floor(password.pw.length / 2));
@@ -152,7 +185,7 @@ export function DriverApplyPage() {
             className="text-white"
             style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "-0.02em" }}
           >
-            swift<span className="text-green-400">ride</span>
+            uni<span className="text-green-400">ride</span>
           </Link>
         </div>
 
@@ -238,7 +271,7 @@ export function DriverApplyPage() {
         </div>
 
         <p className="text-white/30 text-xs">
-          © 2026 SwiftRide Bangladesh · Privacy · Terms
+          © 2026 UniRide Bangladesh · Privacy · Terms
         </p>
       </div>
 
@@ -264,7 +297,7 @@ export function DriverApplyPage() {
               className="lg:hidden block text-gray-900 mb-8"
               style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "-0.02em" }}
             >
-              swift<span className="text-green-600">ride</span>
+              uni<span className="text-green-600">ride</span>
             </Link>
 
             {/* Step pill indicator */}
@@ -359,7 +392,7 @@ export function DriverApplyPage() {
                     Your vehicle.
                   </h1>
                   <p className="text-gray-500 mb-6" style={{ fontSize: "0.88rem" }}>
-                    The car you'll use for SwiftRide trips. Must be 2015 or newer.
+                    The car you'll use for UniRide trips. Must be 2015 or newer.
                   </p>
                 </div>
 
@@ -581,7 +614,7 @@ export function DriverApplyPage() {
                     Almost there.
                   </h1>
                   <p className="text-gray-500 mb-6" style={{ fontSize: "0.88rem" }}>
-                    Create a password for your SwiftRide driver account.
+                    Create a password for your UniRide driver account.
                   </p>
                 </div>
 
@@ -649,7 +682,7 @@ export function DriverApplyPage() {
                 {error && <p className="text-red-500 text-xs">{error}</p>}
 
                 <p className="text-gray-400 text-xs" style={{ lineHeight: 1.65 }}>
-                  By submitting this application you agree to SwiftRide's{" "}
+                  By submitting this application you agree to UniRide's{" "}
                   <a href="#" className="underline">Terms of Service</a>,{" "}
                   <a href="#" className="underline">Driver Agreement</a>, and{" "}
                   <a href="#" className="underline">Privacy Policy</a>.

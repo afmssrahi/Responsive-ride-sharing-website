@@ -44,7 +44,7 @@ function Overview() {
   ];
   return (
     <div className="space-y-8">
-      <div><h2 className="text-gray-900 mb-1" style={{fontWeight:800,fontSize:"1.3rem",letterSpacing:"-0.02em"}}>Platform Overview</h2><p className="text-gray-400 text-sm">Live snapshot of SwiftRide operations.</p></div>
+      <div><h2 className="text-gray-900 mb-1" style={{fontWeight:800,fontSize:"1.3rem",letterSpacing:"-0.02em"}}>Platform Overview</h2><p className="text-gray-400 text-sm">Live snapshot of UniRide operations.</p></div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(s=><div key={s.label} className="bg-white border border-gray-100 rounded-xl p-5"><p className="text-gray-400 mb-3" style={{fontSize:"0.75rem",fontWeight:500,textTransform:"uppercase",letterSpacing:"0.05em"}}>{s.label}</p><p className="text-gray-900" style={{fontWeight:800,fontSize:"1.4rem",letterSpacing:"-0.02em"}}>{s.value.toLocaleString()}</p></div>)}
       </div>
@@ -159,7 +159,7 @@ export function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#F7F7F5] flex" style={{fontFamily:"'Plus Jakarta Sans', sans-serif"}}>
       <aside className={`fixed inset-y-0 left-0 z-40 w-58 bg-gray-950 text-white flex flex-col transition-transform duration-300 ${sidebarOpen?"translate-x-0":"-translate-x-full"} lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:flex`} style={{width:228}}>
-        <div className="px-5 py-5 border-b border-white/8"><span className="text-white" style={{fontSize:"1rem",fontWeight:800,letterSpacing:"-0.02em"}}>swift<span className="text-green-400">ride</span></span><div className="flex items-center gap-1.5 mt-0.5"><Shield className="w-2.5 h-2.5 text-white/30"/><span className="text-white/30 text-xs">Admin Panel</span></div></div>
+        <div className="px-5 py-5 border-b border-white/8"><span className="text-white" style={{fontSize:"1rem",fontWeight:800,letterSpacing:"-0.02em"}}>uni<span className="text-green-400">ride</span></span><div className="flex items-center gap-1.5 mt-0.5"><Shield className="w-2.5 h-2.5 text-white/30"/><span className="text-white/30 text-xs">Admin Panel</span></div></div>
         <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">{NAV.map(({id,label,icon:Icon})=><button key={id} onClick={()=>{setSection(id);setSidebarOpen(false)}} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors ${section===id?"bg-white/10 text-white":"text-white/40 hover:text-white/80 hover:bg-white/5"}`} style={{fontSize:"0.8rem",fontWeight:500}}><Icon className="w-3.5 h-3.5 flex-shrink-0"/>{label}</button>)}</nav>
         <div className="flex-shrink-0 px-4 py-4 border-t border-white/8">
           <button onClick={()=>{navigate("/admin/account");setSidebarOpen(false)}} className="flex items-center gap-2.5 mb-3 w-full text-left hover:opacity-80 transition-opacity"><div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white/70 text-xs font-bold">{user?.avatar}</div><div className="min-w-0"><p className="text-white/80 text-xs font-medium truncate">{user?.name}</p><p className="text-white/30 text-xs truncate">{user?.email}</p></div></button>

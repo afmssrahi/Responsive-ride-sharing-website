@@ -55,11 +55,9 @@ export function GetStartedPage() {
     } catch {
       // User doesn't exist — register them
       try {
-        const { auth: authApi, setTokens } = await import("../services/api");
-        const res = await authApi.register({ name: form.name, email: form.email, phone: form.phone || undefined, password: form.password });
-        setTokens(res.data.accessToken, res.data.refreshToken);
-        navigate("/dashboard");
-        return;
+        const { auth: authApi } = await import("../services/api");
+        await authApi.register({ name: form.name, email: form.email, phone: form.phone || undefined, password: form.password });
+        await login(form.email, form.password);
       } catch (regErr) {
         if (regErr instanceof ApiError) setError(regErr.message);
         else setError("Registration failed. Please try again.");
@@ -84,7 +82,7 @@ export function GetStartedPage() {
             className="text-white"
             style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "-0.02em" }}
           >
-            swift<span className="text-green-400">ride</span>
+            uni<span className="text-green-400">ride</span>
           </Link>
         </div>
 
@@ -127,7 +125,7 @@ export function GetStartedPage() {
         </div>
 
         <p className="text-white/30 text-xs">
-          © 2026 SwiftRide, Inc. · Privacy · Terms
+          © 2026 UniRide, Inc. · Privacy · Terms
         </p>
       </div>
 
@@ -141,7 +139,7 @@ export function GetStartedPage() {
             style={{ fontSize: "0.85rem", fontWeight: 500 }}
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to SwiftRide
+            Back to UniRide
           </Link>
         </div>
 
@@ -153,7 +151,7 @@ export function GetStartedPage() {
               className="lg:hidden block text-gray-900 mb-8"
               style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "-0.02em" }}
             >
-              swift<span className="text-green-600">ride</span>
+              uni<span className="text-green-600">ride</span>
             </Link>
 
             {/* Step indicator */}
@@ -315,7 +313,7 @@ export function GetStartedPage() {
                 {error && <p className="text-red-500 text-xs">{error}</p>}
 
                 <p className="text-gray-400 text-xs" style={{ lineHeight: 1.6 }}>
-                  By creating an account you agree to SwiftRide's{" "}
+                  By creating an account you agree to UniRide's{" "}
                   <a href="#" className="underline">Terms of Service</a> and{" "}
                   <a href="#" className="underline">Privacy Policy</a>.
                 </p>

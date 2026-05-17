@@ -13,7 +13,7 @@ const rides = [
     selected: true,
   },
   {
-    name: "SwiftPool",
+    name: "UniPool",
     tag: "Share",
     price: "From $1.99",
     eta: "5–10 min",
@@ -24,7 +24,7 @@ const rides = [
     selected: false,
   },
   {
-    name: "SwiftLux",
+    name: "UniLux",
     tag: "Premium",
     price: "From $9.99",
     eta: "3–8 min",

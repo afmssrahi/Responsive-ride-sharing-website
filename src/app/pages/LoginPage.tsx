@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth, DEMO_ACCOUNTS } from "../context/AuthContext";
 import { ApiError } from "../services/api";
@@ -12,7 +12,9 @@ const ROUTE_MAP: Record<string, string> = {
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
+  const redirectTo = searchParams.get("redirect");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -26,7 +28,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      navigate(ROUTE_MAP[user.role] || "/dashboard");
+      navigate(redirectTo || ROUTE_MAP[user.role] || "/dashboard");
     } catch (err) {
       if (err instanceof ApiError) setError(err.message);
       else setError("Something went wrong. Please try again.");
@@ -40,7 +42,7 @@ export function LoginPage() {
     setError("");
     try {
       const user = await login(account.email, account.password);
-      navigate(account.route || ROUTE_MAP[user.role] || "/dashboard");
+      navigate(redirectTo || account.route || ROUTE_MAP[user.role] || "/dashboard");
     } catch (err) {
       if (err instanceof ApiError) setError(err.message);
       else setError("Demo login failed. Make sure the backend is running.");
@@ -53,14 +55,14 @@ export function LoginPage() {
     <div className="min-h-screen bg-[#F7F7F5] flex flex-col" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="max-w-6xl mx-auto px-5 sm:px-8 w-full pt-5">
         <Link to="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors" style={{ fontSize: "0.85rem", fontWeight: 500 }}>
-          <ArrowLeft className="w-3.5 h-3.5" /> Back to SwiftRide
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to UniRide
         </Link>
       </div>
 
       <div className="flex-1 flex items-center justify-center px-5 py-12">
         <div className="w-full max-w-sm">
           <Link to="/" className="block text-gray-900 mb-8" style={{ fontSize: "1.35rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
-            swift<span className="text-green-600">ride</span>
+            uni<span className="text-green-600">ride</span>
           </Link>
 
           <h1 className="text-gray-900 mb-1" style={{ fontSize: "1.6rem", fontWeight: 800, letterSpacing: "-0.025em", lineHeight: 1.2 }}>

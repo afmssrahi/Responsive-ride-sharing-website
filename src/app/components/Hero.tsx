@@ -119,7 +119,12 @@ export function Hero() {
             </div>
 
             <button
-              onClick={() => navigate("/find-ride")}
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (pickup) params.set("pickup", pickup);
+                if (dropoff) params.set("dropoff", dropoff);
+                navigate(`/find-ride?${params.toString()}`);
+              }}
               className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
               style={{ fontWeight: 700, fontSize: "0.9rem" }}
             >

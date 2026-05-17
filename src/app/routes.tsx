@@ -12,6 +12,7 @@ import { UserDashboard } from "./pages/user/UserDashboard";
 import { UserAccountPage } from "./pages/user/UserAccountPage";
 import { DriverDashboard } from "./pages/driver/DriverDashboard";
 import { DriverAccountPage } from "./pages/driver/DriverAccountPage";
+import { ChatPage } from "./pages/ChatPage";
 import { Navbar } from "./components/Navbar";
 
 function RootLayout() {
@@ -37,4 +38,5 @@ export const router = createBrowserRouter([
   { path: "/dashboard/account", element: <UserAccountPage /> },
   { path: "/driver", element: <DriverDashboard /> },
   { path: "/driver/account", element: <DriverAccountPage /> },
+  { path: "/chat/:rideId", element: <ChatPage /> },
 ]);

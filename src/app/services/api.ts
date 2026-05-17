@@ -1,22 +1,22 @@
-// Centralized API client for SwiftRide frontend
+// Centralized API client for UniRide frontend
 // All backend communication goes through this module
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
 // ── Token management ──────────────────────────────────────────────
 export function getAccessToken(): string | null {
-  return localStorage.getItem('swiftride_token');
+  return localStorage.getItem('uniride_token');
 }
 export function getRefreshToken(): string | null {
-  return localStorage.getItem('swiftride_refresh');
+  return localStorage.getItem('uniride_refresh');
 }
 export function setTokens(access: string, refresh: string) {
-  localStorage.setItem('swiftride_token', access);
-  localStorage.setItem('swiftride_refresh', refresh);
+  localStorage.setItem('uniride_token', access);
+  localStorage.setItem('uniride_refresh', refresh);
 }
 export function clearTokens() {
-  localStorage.removeItem('swiftride_token');
-  localStorage.removeItem('swiftride_refresh');
+  localStorage.removeItem('uniride_token');
+  localStorage.removeItem('uniride_refresh');
 }
 
 // ── Core fetch wrapper ────────────────────────────────────────────
@@ -150,9 +150,12 @@ export const rides = {
   cancel: (id: string, reason?: string) => post(`/rides/${id}/cancel`, { reason }),
   start: (id: string) => post(`/rides/${id}/start`),
   complete: (id: string) => post(`/rides/${id}/complete`),
+  accept: (id: string) => post<{ success: boolean; data: any }>(`/rides/${id}/accept`),
   myCreated: (page = 1) => get<{ success: boolean; rides: any[]; meta: any }>(`/rides/my-created?page=${page}`),
   myJoined: (page = 1) => get<{ success: boolean; rides: any[]; meta: any }>(`/rides/my-joined?page=${page}`),
   getTypes: () => get<{ success: boolean; data: any[] }>('/rides/types'),
+  getPendingRequests: (page = 1) =>
+    get<{ success: boolean; rides: any[]; meta: any }>(`/rides/pending-requests?page=${page}`),
 };
 
 // ── ADMIN ─────────────────────────────────────────────────────────
@@ -183,3 +186,22 @@ export const ratings = {
   submit: (data: { rideId: string; toUserId: string; rating: number; comment?: string }) =>
     post('/ratings', data),
 };
+
+// ── CHAT ──────────────────────────────────────────────────────────
+export const chat = {
+  getConversation: (rideId: string) =>
+    get<{ success: boolean; data: { conversation: any; ride: any } }>(`/chat/${rideId}`),
+  sendMessage: (rideId: string, body: string) =>
+    post<{ success: boolean; data: any }>(`/chat/${rideId}/send`, { body }),
+  getUnreadCount: () =>
+    get<{ success: boolean; data: { count: number } }>('/chat/unread-count'),
+};
+
+// ── NOTIFICATIONS ────────────────────────────────────────────────
+export const notifications = {
+  getAll: (page = 1) =>
+    get<{ success: boolean; notifications: any[]; unreadCount: number; meta: any }>(`/notifications?page=${page}`),
+  markRead: (id: string) => patch(`/notifications/${id}/read`),
+  markAllRead: () => patch('/notifications/read-all'),
+};
+

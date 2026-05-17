@@ -87,7 +87,7 @@ export function AdminAccountPage() {
         <div className="px-5 pt-6 pb-5 border-b border-white/[0.06]">
           <button onClick={() => navigate("/")} className="block">
             <span className="text-white" style={{ fontSize: "1.05rem", fontWeight: 800, letterSpacing: "-0.03em" }}>
-              swift<span className="text-green-400">ride</span>
+              uni<span className="text-green-400">ride</span>
             </span>
           </button>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -172,7 +172,7 @@ export function AdminAccountPage() {
                         </span>
                       </div>
                       <p className="text-gray-400 text-sm">{user?.email}</p>
-                      <p className="text-gray-400 text-xs mt-0.5">Operations & Trust &middot; SwiftRide Bangladesh</p>
+                      <p className="text-gray-400 text-xs mt-0.5">Operations & Trust &middot; UniRide Bangladesh</p>
                     </div>
                   </div>
 
@@ -270,7 +270,7 @@ export function AdminAccountPage() {
                       </div>
                       <div>
                         <p className="text-gray-900 text-sm font-semibold">Super Administrator</p>
-                        <p className="text-gray-400 text-xs">Full platform access &middot; Assigned by SwiftRide BD</p>
+                        <p className="text-gray-400 text-xs">Full platform access &middot; Assigned by UniRide BD</p>
                       </div>
                     </div>
                     <div className="grid sm:grid-cols-2 gap-1">
@@ -281,7 +281,7 @@ export function AdminAccountPage() {
                         </div>
                       ))}
                     </div>
-                    <p className="text-gray-400 text-xs mt-4">Permission changes must be requested through the SwiftRide operations team.</p>
+                    <p className="text-gray-400 text-xs mt-4">Permission changes must be requested through the UniRide operations team.</p>
                   </div>
                 </section>
 

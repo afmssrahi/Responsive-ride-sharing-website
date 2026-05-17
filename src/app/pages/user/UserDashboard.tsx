@@ -3,10 +3,11 @@ import { useNavigate } from "react-router";
 import {
   MapPin, Clock, CreditCard, Bookmark, User as UserIcon,
   LogOut, Menu, Home, Star, Plus, Check,
-  Navigation, X, Car, Loader2
+  Navigation, X, Car, Loader2, MessageSquare
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { MapComponent, getLocationCoordinates } from "../../components/MapComponent";
+import { MapComponent, RouteInfo } from "../../components/MapComponent";
+import { NotificationBell } from "../../components/NotificationBell";
 import { users, rides as ridesApi } from "../../services/api";
 
 type Section = "book" | "rides" | "places" | "payments" | "profile";
@@ -21,6 +22,7 @@ const NAV = [
 
 // ── Book a Ride ───────────────────────────────────────────────────────────────
 function BookRide() {
+  const navigate = useNavigate();
   const [pickup, setPickup] = useState("");
   const [dest, setDest] = useState("");
   const [rideType, setRideType] = useState("");
@@ -29,9 +31,9 @@ function BookRide() {
   const [rideTypes, setRideTypes] = useState<any[]>([]);
   const [savedPlaces, setSavedPlaces] = useState<any[]>([]);
   const [bookedRide, setBookedRide] = useState<any>(null);
-
-  const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [rideStatus, setRideStatus] = useState<string>("PENDING");
+  const [driverInfo, setDriverInfo] = useState<any>(null);
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
 
   useEffect(() => {
     ridesApi.getTypes().then(res => {
@@ -41,34 +43,45 @@ function BookRide() {
     users.getSavedPlaces().then(res => setSavedPlaces(res.data || [])).catch(() => {});
   }, []);
 
+  // Socket.io: listen for ride status updates after booking
   useEffect(() => {
-    if (pickup) { const coords = getLocationCoordinates(pickup); if (coords) setPickupCoords(coords); }
-  }, [pickup]);
-  useEffect(() => {
-    if (dest) { const coords = getLocationCoordinates(dest); if (coords) setDestCoords(coords); }
-  }, [dest]);
+    if (!bookedRide?.id) return;
+    import("../../services/socket").then(({ getSocket, joinRideRoom, leaveRideRoom }) => {
+      joinRideRoom(bookedRide.id);
+      const socket = getSocket();
+      const handler = (data: any) => {
+        if (data.status) setRideStatus(data.status);
+        if (data.driver) setDriverInfo(data.driver);
+        // Automatically navigate to chat when ride is accepted
+        if (data.status === "CONFIRMED") {
+          navigate(`/chat/${bookedRide.id}`);
+        }
+      };
+      socket.on("ride:status_update", handler);
+      return () => { socket.off("ride:status_update", handler); leaveRideRoom(bookedRide.id); };
+    });
+  }, [bookedRide?.id]);
 
   async function handleBook() {
     if (!pickup || !dest) return;
     setSearching(true);
     try {
-      const rt = rideTypes.find(t => t.name === rideType);
       const res = await ridesApi.create({
         type: "ON_DEMAND",
         pickupLocation: pickup,
-        pickupLat: pickupCoords?.lat || 23.8103,
-        pickupLng: pickupCoords?.lng || 90.4125,
+        pickupLat: routeInfo?.pickupCoords?.lat || 23.8103,
+        pickupLng: routeInfo?.pickupCoords?.lng || 90.4125,
         dropoffLocation: dest,
-        dropoffLat: destCoords?.lat || 23.7461,
-        dropoffLng: destCoords?.lng || 90.3742,
+        dropoffLat: routeInfo?.dropoffCoords?.lat || 23.7461,
+        dropoffLng: routeInfo?.dropoffCoords?.lng || 90.3742,
         totalSeats: 1,
         paymentMethod: "CASH",
       });
       setBookedRide(res.data);
+      setRideStatus(res.data.status || "PENDING");
       setBooked(true);
     } catch {
-      // Fallback — still show confirmation with mock
-      setBooked(true);
+      setBooked(true); // show confirmation even on error
     } finally {
       setSearching(false);
     }
@@ -78,18 +91,36 @@ function BookRide() {
     if (bookedRide?.id) {
       try { await ridesApi.cancel(bookedRide.id, "Changed my mind"); } catch {}
     }
-    setBooked(false); setPickup(""); setDest(""); setBookedRide(null);
+    setBooked(false); setPickup(""); setDest(""); setBookedRide(null); setRideStatus("PENDING");
   }
 
   if (booked) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center max-w-sm mx-auto">
-        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-5">
-          <Check className="w-7 h-7 text-gray-900" />
+      <div className="flex flex-col items-center justify-center py-12 text-center max-w-sm mx-auto">
+        <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-5 ${
+          rideStatus === "CONFIRMED" || rideStatus === "IN_PROGRESS" ? "bg-green-50" : "bg-gray-100"
+        }`}>
+          {rideStatus === "CONFIRMED" || rideStatus === "IN_PROGRESS"
+            ? <Check className="w-7 h-7 text-green-600" />
+            : <Loader2 className="w-7 h-7 text-gray-400 animate-spin" />}
         </div>
-        <h2 className="text-gray-900 mb-2" style={{ fontWeight: 800, fontSize: "1.3rem", letterSpacing: "-0.02em" }}>Ride confirmed</h2>
-        <p className="text-gray-500 text-sm mb-1">Your ride has been booked. Code: <strong className="text-gray-800">{bookedRide?.rideCode || "SR-XXX"}</strong></p>
-        <p className="text-gray-400 text-sm mb-8">A driver will be assigned soon.</p>
+        <h2 className="text-gray-900 mb-1" style={{ fontWeight: 800, fontSize: "1.3rem", letterSpacing: "-0.02em" }}>
+          {rideStatus === "CONFIRMED" || rideStatus === "IN_PROGRESS" ? "Driver found!" : "Finding your driver…"}
+        </h2>
+        <p className="text-gray-500 text-sm mb-1">
+          Code: <strong className="text-gray-800">{bookedRide?.rideCode || "SR-XXX"}</strong>
+        </p>
+        {driverInfo && (
+          <p className="text-gray-400 text-sm mb-2">Driver: <strong className="text-gray-700">{driverInfo.name}</strong></p>
+        )}
+        <div className={`text-xs font-semibold px-3 py-1 rounded-full mb-6 ${
+          rideStatus === "IN_PROGRESS" ? "bg-blue-50 text-blue-600" :
+          rideStatus === "CONFIRMED" ? "bg-green-50 text-green-600" :
+          "bg-yellow-50 text-yellow-600"
+        }`}>
+          {rideStatus === "IN_PROGRESS" ? "Trip in progress" :
+           rideStatus === "CONFIRMED" ? "Driver on the way" : "Searching…"}
+        </div>
         <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-5 text-left space-y-3 mb-6">
           <div className="flex justify-between text-sm">
             <span className="text-gray-400">From</span>
@@ -101,10 +132,18 @@ function BookRide() {
             <span className="text-gray-900 font-semibold">{dest}</span>
           </div>
         </div>
-        <button onClick={handleCancel}
-          className="text-gray-400 hover:text-red-500 transition-colors text-sm flex items-center gap-1.5">
-          <X className="w-3.5 h-3.5" /> Cancel ride
-        </button>
+        <div className="flex gap-2 w-full">
+          {bookedRide?.id && (rideStatus === "CONFIRMED" || rideStatus === "IN_PROGRESS") && (
+            <button onClick={() => navigate(`/chat/${bookedRide.id}`)}
+              className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">
+              <MessageSquare className="w-4 h-4" /> Chat driver
+            </button>
+          )}
+          <button onClick={handleCancel}
+            className="flex-1 text-gray-400 hover:text-red-500 transition-colors text-sm flex items-center justify-center gap-1.5 border border-gray-200 rounded-xl py-2.5">
+            <X className="w-3.5 h-3.5" /> Cancel
+          </button>
+        </div>
       </div>
     );
   }
@@ -118,9 +157,9 @@ function BookRide() {
         <p className="text-gray-400 text-sm">Where are you going?</p>
       </div>
 
-      {(pickupCoords || destCoords) && (
+      {(pickup || dest) && (
         <div className="bg-white border border-gray-100 rounded-xl p-4">
-          <MapComponent pickupLat={pickupCoords?.lat} pickupLng={pickupCoords?.lng} dropoffLat={destCoords?.lat} dropoffLng={destCoords?.lng} height="300px" />
+          <MapComponent pickupText={pickup} dropoffText={dest} onRouteChange={(r) => setRouteInfo(r)} height="300px" showGeolocationButton={false} />
         </div>
       )}
 
@@ -174,8 +213,10 @@ function BookRide() {
   );
 }
 
+
 // ── My Rides ──────────────────────────────────────────────────────────────────
 function MyRides() {
+  const navigate = useNavigate();
   const [rideHistory, setRideHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -214,14 +255,23 @@ function MyRides() {
                   </p>
                 </div>
               </div>
-              {r.ratings?.[0] && (
-                <div className="flex items-center gap-1 pt-2 border-t border-gray-50">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`w-3 h-3 ${i < r.ratings[0].rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
-                  ))}
-                  <span className="text-gray-300 text-xs ml-1.5">Your rating</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                {r.ratings?.[0] ? (
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-3 h-3 ${i < r.ratings[0].rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
+                    ))}
+                    <span className="text-gray-300 text-xs ml-1.5">Your rating</span>
+                  </div>
+                ) : <div />}
+                
+                {(r.status === 'CONFIRMED' || r.status === 'IN_PROGRESS') && (
+                  <button onClick={() => navigate(`/chat/${r.id}`)}
+                    className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium transition-colors text-xs">
+                    <MessageSquare className="w-3.5 h-3.5" /> Chat
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -463,7 +513,7 @@ export function UserDashboard() {
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:flex`} style={{ width: 220 }}>
         <div className="px-5 py-5 border-b border-gray-100">
           <span className="text-gray-900" style={{ fontSize: "1rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
-            swift<span className="text-green-600">ride</span>
+            uni<span className="text-green-600">ride</span>
           </span>
           <p className="text-gray-400 text-xs mt-0.5">Passenger Portal</p>
         </div>
@@ -496,9 +546,12 @@ export function UserDashboard() {
       {sidebarOpen && <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-100 px-5 sm:px-8 py-4 flex items-center gap-4">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500"><Menu className="w-5 h-5" /></button>
-          <p className="text-gray-900 text-sm font-semibold">{NAV.find(n => n.id === section)?.label}</p>
+        <header className="bg-white border-b border-gray-100 px-5 sm:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500"><Menu className="w-5 h-5" /></button>
+            <p className="text-gray-900 text-sm font-semibold">{NAV.find(n => n.id === section)?.label}</p>
+          </div>
+          <NotificationBell />
         </header>
         <main className="flex-1 px-5 sm:px-8 py-8 overflow-auto">
           {sectionMap[section]}

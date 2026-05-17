@@ -33,7 +33,7 @@ export function Footer() {
               className="text-gray-900"
               style={{ fontSize: "1.1rem", fontWeight: 800, letterSpacing: "-0.02em" }}
             >
-              swift<span className="text-green-600">ride</span>
+              uni<span className="text-green-600">ride</span>
             </a>
             <p className="text-gray-400 mt-3 text-sm" style={{ lineHeight: 1.65 }}>
               Getting you where you need to go, without the drama.
@@ -83,7 +83,7 @@ export function Footer() {
       <div className="border-t border-gray-100">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-gray-400" style={{ fontSize: "0.8rem" }}>
-            © 2026 SwiftRide, Inc.
+            © 2026 UniRide, Inc.
           </p>
           <div className="flex gap-5">
             {["Twitter", "Instagram", "LinkedIn"].map((s) => (

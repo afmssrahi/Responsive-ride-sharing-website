@@ -4,18 +4,18 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding SwiftRide database...');
+  console.log('🌱 Seeding UniRide database...');
 
   // ── Password ───────────────────────────────────────────────────
   const password = await bcrypt.hash('demo123', 12);
 
   // ── Admin ──────────────────────────────────────────────────────
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@swiftride.com.bd' },
+    where: { email: 'admin@uniride.com.bd' },
     update: {},
     create: {
       name: 'Admin User',
-      email: 'admin@swiftride.com.bd',
+      email: 'admin@uniride.com.bd',
       passwordHash: password,
       role: 'ADMIN',
       avatar: 'AD',
@@ -201,8 +201,8 @@ async function main() {
     { key: 'surge_multiplier_max', value: '3.0' },
     { key: 'cancellation_fee_bdt', value: '30' },
     { key: 'driver_payout_day', value: 'Monday' },
-    { key: 'support_phone', value: '09678-SWIFT' },
-    { key: 'support_email', value: 'support@swiftride.com.bd' },
+    { key: 'support_phone', value: '09678-UNIRIDE' },
+    { key: 'support_email', value: 'support@uniride.com.bd' },
   ];
   for (const s of settings) {
     await prisma.platformSetting.upsert({
@@ -248,7 +248,7 @@ async function main() {
   console.log('✅ Seed complete!');
   console.log('');
   console.log('Demo accounts:');
-  console.log('  Admin   → admin@swiftride.com.bd / demo123');
+  console.log('  Admin   → admin@uniride.com.bd / demo123');
   console.log('  User    → farhan@example.com / demo123');
   console.log('  Driver  → rasel@example.com / demo123');
 }

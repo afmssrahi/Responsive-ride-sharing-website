@@ -37,7 +37,7 @@ export function DriverApplySubmittedPage() {
             className="text-gray-900"
             style={{ fontSize: "1.15rem", fontWeight: 800, letterSpacing: "-0.02em" }}
           >
-            swift<span className="text-green-600">ride</span>
+            uni<span className="text-green-600">ride</span>
           </Link>
         </div>
       </div>
@@ -78,7 +78,7 @@ export function DriverApplySubmittedPage() {
           </h1>
 
           <p className="text-gray-500" style={{ fontSize: "0.95rem", lineHeight: 1.8, maxWidth: "500px" }}>
-            Thanks for applying to drive with SwiftRide. We'll review your
+            Thanks for applying to drive with UniRide. We'll review your
             documents and update you by SMS at every step. The whole process
             usually takes 10–14 days.
           </p>
@@ -150,7 +150,7 @@ export function DriverApplySubmittedPage() {
             className="bg-gray-900 hover:bg-gray-700 text-white px-7 py-3 rounded-xl transition-colors inline-flex items-center justify-center"
             style={{ fontWeight: 700, fontSize: "0.88rem" }}
           >
-            Back to SwiftRide
+            Back to UniRide
           </Link>
           <Link
             to="/drive/requirements"
@@ -164,7 +164,7 @@ export function DriverApplySubmittedPage() {
 
       <div className="border-t border-gray-200 py-5">
         <p className="text-center text-gray-400" style={{ fontSize: "0.75rem" }}>
-          © 2026 SwiftRide Bangladesh · Questions? Call 09678-SWIFT
+          © 2026 UniRide Bangladesh · Questions? Call 09678-UNIRIDE
         </p>
       </div>
     </div>

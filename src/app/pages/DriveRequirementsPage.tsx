@@ -34,7 +34,7 @@ const requirements = [
   {
     category: "Equipment",
     items: [
-      { title: "Smartphone", detail: "Android 9.0 or iOS 14 or newer. The SwiftRide Driver app requires at least 2 GB RAM." },
+      { title: "Smartphone", detail: "Android 9.0 or iOS 14 or newer. The UniRide Driver app requires at least 2 GB RAM." },
       { title: "Data plan", detail: "An active mobile data subscription (any operator — Grameenphone, Robi, Banglalink, Teletalk)." },
       { title: "bKash or Nagad account", detail: "Your weekly earnings are paid out directly to your bKash or Nagad mobile banking number." },
     ],
@@ -60,7 +60,7 @@ const process = [
   {
     step: "04",
     title: "Vehicle inspection",
-    body: "A SwiftRide inspector visits at a location convenient to you — typically a service centre near Farmgate, Mohakhali, or Mirpur. Takes 30 minutes.",
+    body: "A UniRide inspector visits at a location convenient to you — typically a service centre near Farmgate, Mohakhali, or Mirpur. Takes 30 minutes.",
   },
   {
     step: "05",
@@ -76,7 +76,7 @@ const faqs = [
   },
   {
     q: "My licence is non-professional. Can I still apply?",
-    a: "Yes. A non-professional (private) licence Class B is sufficient for standard SwiftRide trips. A professional licence is required only if you want to take intercity routes.",
+    a: "Yes. A non-professional (private) licence Class B is sufficient for standard UniRide trips. A professional licence is required only if you want to take intercity routes.",
   },
   {
     q: "How long does the full process take?",
@@ -112,7 +112,7 @@ export function DriveRequirementsPage() {
           style={{ fontSize: "0.82rem", fontWeight: 500 }}
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          Back to SwiftRide
+          Back to UniRide
         </Link>
 
         <div className="max-w-3xl">
@@ -395,7 +395,7 @@ export function DriveRequirementsPage() {
           className="text-center text-white/30"
           style={{ fontSize: "0.75rem" }}
         >
-          © 2026 SwiftRide Bangladesh · Privacy · Terms · Driver Support: 09678-SWIFT
+          © 2026 UniRide Bangladesh · Privacy · Terms · Driver Support: 09678-UNIRIDE
         </p>
       </div>
     </div>

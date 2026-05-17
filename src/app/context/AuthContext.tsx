@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { await authApi.logout(); } catch { /* ignore */ }
     clearTokens();
     setUser(null);
+    import("../services/socket").then(m => m.disconnectSocket());
   }
 
   return (
@@ -89,7 +90,7 @@ export function useAuth() {
 
 // Quick-access demo credentials (for the login page buttons)
 export const DEMO_ACCOUNTS = [
-  { label: "Admin", email: "admin@swiftride.com.bd", password: "demo123", route: "/admin" },
+  { label: "Admin", email: "admin@uniride.com.bd", password: "demo123", route: "/admin" },
   { label: "User", email: "farhan@example.com", password: "demo123", route: "/dashboard" },
   { label: "Driver", email: "rasel@example.com", password: "demo123", route: "/driver" },
 ];

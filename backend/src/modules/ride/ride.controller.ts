@@ -101,3 +101,25 @@ export async function getRideTypes(_req: AuthRequest, res: Response, next: NextF
     res.json({ success: true, data: types });
   } catch (err) { next(err); }
 }
+
+import { getIO } from '../../config/socket';
+
+export async function acceptRide(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const ride = await rideService.acceptRide(req.params['id'] as string, req.user!.id);
+    getIO().to(`ride:${ride.id}`).emit('ride:status_update', {
+      status: ride.status,
+      driver: ride.driver,
+    });
+    res.json({ success: true, data: ride });
+  } catch (err) { next(err); }
+}
+
+export async function getPendingRides(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await rideService.getPendingRides(page, limit);
+    res.json({ success: true, ...result });
+  } catch (err) { next(err); }
+}

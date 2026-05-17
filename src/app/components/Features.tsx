@@ -34,7 +34,7 @@ export function Features() {
           </div>
           <div className="space-y-4">
             <p className="text-gray-500" style={{ fontSize: "0.95rem", lineHeight: 1.75 }}>
-              Every driver on SwiftRide passes a multi-step background check before their first trip.
+              Every driver on UniRide passes a multi-step background check before their first trip.
               We look at criminal history, driving record, license validity — and we re-run checks
               every six months. Not because we have to, because we think you deserve it.
             </p>

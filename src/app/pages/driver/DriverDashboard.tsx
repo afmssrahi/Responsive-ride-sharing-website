@@ -2,17 +2,19 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   Home, Clock, DollarSign, Star, User as UserIcon,
-  LogOut, Menu, Phone, MessageSquare, Check, X,
-  TrendingUp, Navigation, Car, Loader2
+  LogOut, Menu, MessageSquare, Check,
+  TrendingUp, Navigation, Car, Loader2, Bell
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "../../context/AuthContext";
-import { drivers as driversApi } from "../../services/api";
+import { NotificationBell } from "../../components/NotificationBell";
+import { drivers as driversApi, rides as ridesApi } from "../../services/api";
 
-type Section = "home" | "trips" | "earnings" | "ratings" | "profile";
+type Section = "home" | "requests" | "trips" | "earnings" | "ratings" | "profile";
 
 const NAV = [
   { id: "home" as Section, label: "Home", icon: Home },
+  { id: "requests" as Section, label: "Ride Requests", icon: Bell },
   { id: "trips" as Section, label: "My Trips", icon: Clock },
   { id: "earnings" as Section, label: "Earnings", icon: DollarSign },
   { id: "ratings" as Section, label: "Ratings", icon: Star },
@@ -78,6 +80,7 @@ function DriverHome() {
 
 // ── My Trips ──────────────────────────────────────────────────────────────────
 function MyTrips() {
+  const navigate = useNavigate();
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,8 +109,14 @@ function MyTrips() {
                 </div>
                 <p className="text-gray-900 font-semibold text-sm">BDT {t.totalFare || t.baseFare || '—'}</p>
               </div>
-              <div className="flex items-center gap-4 text-xs text-gray-400 pt-3 border-t border-gray-50">
+              <div className="flex items-center gap-4 text-xs text-gray-400 pt-3 border-t border-gray-50 justify-between">
                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{t.status}</span>
+                {(t.status === 'CONFIRMED' || t.status === 'IN_PROGRESS') && (
+                  <button onClick={() => navigate(`/chat/${t.id}`)}
+                    className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-medium transition-colors">
+                    <MessageSquare className="w-3.5 h-3.5" /> Chat
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -116,6 +125,99 @@ function MyTrips() {
     </div>
   );
 }
+
+// ── Pending Ride Requests (ON_DEMAND) ─────────────────────────────────────────
+function PendingRides() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [rides, setRides] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    ridesApi.getPendingRequests()
+      .then(res => setRides(res.rides || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  async function handleAccept(rideId: string) {
+    setAccepting(rideId);
+    try {
+      await ridesApi.accept(rideId);
+      setRides(prev => prev.filter(r => r.id !== rideId));
+      navigate(`/chat/${rideId}`);
+    } catch (err: any) {
+      alert(err?.data?.message || 'Could not accept ride');
+    } finally {
+      setAccepting(null);
+    }
+  }
+
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-gray-900 mb-1" style={{ fontWeight: 800, fontSize: "1.3rem", letterSpacing: "-0.02em" }}>Ride Requests</h2>
+          <p className="text-gray-400 text-sm">{rides.length} pending requests near you.</p>
+        </div>
+        <button onClick={load} className="text-xs text-gray-400 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors">Refresh</button>
+      </div>
+      {rides.length === 0 ? (
+        <div className="bg-white border border-gray-100 rounded-xl p-12 text-center">
+          <Car className="w-8 h-8 text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-400 text-sm">No pending ride requests right now.</p>
+          <p className="text-gray-300 text-xs mt-1">Check back shortly or go online to receive requests.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {rides.map((r: any) => (
+            <div key={r.id} className="bg-white border border-gray-100 rounded-xl p-5 hover:border-gray-200 transition-colors">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
+                      {r.creator?.avatar || 'U'}
+                    </div>
+                    <span className="text-gray-900 font-semibold text-sm">{r.creator?.name || 'Passenger'}</span>
+                  </div>
+                  <div className="space-y-1 ml-8">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                      <span className="text-gray-700 truncate">{r.pickupLocation}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-2 h-2 rounded-full bg-gray-900 flex-shrink-0" />
+                      <span className="text-gray-700 truncate">{r.dropoffLocation}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleTimeString('en-BD', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-gray-300 text-xs mt-0.5">#{r.rideCode}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleAccept(r.id)}
+                disabled={accepting === r.id}
+                className="w-full bg-gray-900 hover:bg-gray-700 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                {accepting === r.id ? <><Loader2 className="w-4 h-4 animate-spin" /> Accepting…</> : <><Check className="w-4 h-4" /> Accept Ride</>}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 // ── Earnings ──────────────────────────────────────────────────────────────────
 function Earnings() {
@@ -320,6 +422,7 @@ export function DriverDashboard() {
 
   const sectionMap: Record<Section, JSX.Element> = {
     home: <DriverHome />,
+    requests: <PendingRides />,
     trips: <MyTrips />,
     earnings: <Earnings />,
     ratings: <Ratings />,
@@ -332,7 +435,7 @@ export function DriverDashboard() {
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:flex`} style={{ width: 220 }}>
         <div className="px-5 py-5 border-b border-gray-100">
           <span className="text-gray-900" style={{ fontSize: "1rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
-            swift<span className="text-green-600">ride</span>
+            uni<span className="text-green-600">ride</span>
           </span>
           <div className="flex items-center gap-1.5 mt-0.5">
             <Car className="w-2.5 h-2.5 text-gray-400" />
@@ -368,9 +471,12 @@ export function DriverDashboard() {
       {sidebarOpen && <div className="fixed inset-0 z-30 bg-black/30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-100 px-5 sm:px-8 py-4 flex items-center gap-4">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500"><Menu className="w-5 h-5" /></button>
-          <p className="text-gray-900 text-sm font-semibold">{NAV.find(n => n.id === section)?.label}</p>
+        <header className="bg-white border-b border-gray-100 px-5 sm:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500"><Menu className="w-5 h-5" /></button>
+            <p className="text-gray-900 text-sm font-semibold">{NAV.find(n => n.id === section)?.label}</p>
+          </div>
+          <NotificationBell />
         </header>
         <main className="flex-1 px-5 sm:px-8 py-8 overflow-auto">
           {sectionMap[section]}

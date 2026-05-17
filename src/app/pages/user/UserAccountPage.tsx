@@ -91,7 +91,7 @@ export function UserAccountPage() {
         <div className="px-5 pt-6 pb-5 border-b border-gray-100">
           <button onClick={() => navigate("/")} className="block">
             <span className="text-gray-900" style={{ fontSize: "1.05rem", fontWeight: 800, letterSpacing: "-0.03em" }}>
-              swift<span className="text-green-600">ride</span>
+              uni<span className="text-green-600">ride</span>
             </span>
           </button>
           <p className="text-gray-400 text-xs mt-0.5">Passenger Portal</p>
@@ -345,7 +345,7 @@ export function UserAccountPage() {
                   <div className="px-6 pb-5">
                     <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
                       <div>
-                        <p className="text-gray-700 text-sm font-semibold">SwiftRide Credit</p>
+                        <p className="text-gray-700 text-sm font-semibold">UniRide Credit</p>
                         <p className="text-gray-400 text-xs mt-0.5">Applied automatically on next ride.</p>
                       </div>
                       <p className="text-gray-900 font-bold">BDT 100</p>
@@ -570,7 +570,7 @@ export function UserAccountPage() {
                       className="w-full flex items-center justify-between py-3 text-left border-b border-gray-50 group"
                     >
                       <span className="text-gray-600 text-sm group-hover:text-gray-900 flex items-center gap-2.5 transition-colors">
-                        <LogOut className="w-3.5 h-3.5 text-gray-400" /> Sign out of SwiftRide
+                        <LogOut className="w-3.5 h-3.5 text-gray-400" /> Sign out of UniRide
                       </span>
                       <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
                     </button>

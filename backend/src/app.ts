@@ -12,6 +12,8 @@ import userRoutes from './modules/user/user.routes';
 import driverRoutes from './modules/driver/driver.routes';
 import rideRoutes from './modules/ride/ride.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import chatRoutes from './modules/chat/chat.routes';
+import notificationRoutes from './modules/notifications/notifications.routes';
 
 const app = express();
 
@@ -42,6 +44,8 @@ app.use(`${API}/users`, userRoutes);
 app.use(`${API}/drivers`, driverRoutes);
 app.use(`${API}/rides`, rideRoutes);
 app.use(`${API}/admin`, adminRoutes);
+app.use(`${API}/chat`, chatRoutes);
+app.use(`${API}/notifications`, notificationRoutes);
 
 // ── Rating Route (inline for simplicity) ─────────────────────────
 import { Router } from 'express';

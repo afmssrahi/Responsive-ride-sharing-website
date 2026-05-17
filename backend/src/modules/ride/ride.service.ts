@@ -59,7 +59,7 @@ export async function createRide(userId: string, dto: CreateRideDto) {
       notes: dto.notes,
       promoCodeId,
     },
-    include: { creator: { select: { id: true, name: true, avatar: true, rating: false } }, vehicle: true },
+    include: { creator: { select: { id: true, name: true, avatar: true } }, vehicle: true },
   });
 
   return ride;
@@ -383,3 +383,55 @@ export async function myJoinedRides(userId: string, page = 1, limit = 10) {
 export async function getRideTypes() {
   return prisma.rideTypeConfig.findMany({ where: { isActive: true } });
 }
+
+// ── Accept ON_DEMAND Ride (driver) ────────────────────────────────────
+export async function acceptRide(rideId: string, driverId: string) {
+  return prisma.$transaction(async (tx) => {
+    const ride = await tx.ride.findUnique({ where: { id: rideId } });
+    if (!ride) throw new NotFoundError('Ride not found');
+    if (ride.status !== 'PENDING') throw new BadRequestError('Ride is no longer available');
+    if (ride.type !== 'ON_DEMAND') throw new BadRequestError('Only ON_DEMAND rides can be accepted this way');
+
+    // Assign driver and confirm
+    const updated = await tx.ride.update({
+      where: { id: rideId },
+      data: { driverId, status: 'CONFIRMED' },
+      include: {
+        creator: { select: { id: true, name: true, avatar: true } },
+        driver: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    // Notify the ride creator
+    await tx.notification.create({
+      data: {
+        userId: ride.creatorId,
+        title: 'Driver Found! 🚗',
+        body: `A driver has accepted your ride to ${ride.dropoffLocation}. They are on their way!`,
+        type: 'RIDE_CONFIRMED',
+        data: { rideId },
+      },
+    });
+
+    return updated;
+  });
+}
+
+// ── Get Pending ON_DEMAND Rides (for drivers to browse) ───────────────
+export async function getPendingRides(page = 1, limit = 20) {
+  const { skip, take } = paginate(page, limit);
+  const [rides, total] = await Promise.all([
+    prisma.ride.findMany({
+      where: { type: 'ON_DEMAND', status: 'PENDING' },
+      skip,
+      take,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        creator: { select: { id: true, name: true, avatar: true } },
+      },
+    }),
+    prisma.ride.count({ where: { type: 'ON_DEMAND', status: 'PENDING' } }),
+  ]);
+  return { rides, meta: paginationMeta(total, page, limit) };
+}
+

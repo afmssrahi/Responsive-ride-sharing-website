@@ -2,26 +2,26 @@ const testimonials = [
   {
     name: "Sarah M.",
     location: "New York",
-    text: "I've tried three different ride apps and SwiftRide is the only one where the driver actually shows up on time. Every single day.",
+    text: "I've tried three different ride apps and UniRide is the only one where the driver actually shows up on time. Every single day.",
     detail: "Daily commuter for 8 months",
   },
   {
     name: "James O.",
     location: "Chicago",
     text: "Used it for a client dinner last week. Clean car, quiet driver, arrived with time to spare. I've switched permanently.",
-    detail: "SwiftLux rider",
+    detail: "UniLux rider",
   },
   {
     name: "Priya K.",
     location: "Los Angeles",
     text: "The pool option is genuinely good value. I share a ride most mornings and I've probably saved $200 this month.",
-    detail: "SwiftPool regular",
+    detail: "UniPool regular",
   },
   {
     name: "Tom R.",
     location: "Austin",
     text: "My driver waited 3 extra minutes without complaint while I ran back inside. Small thing but it matters.",
-    detail: "Using SwiftRide since 2024",
+    detail: "Using UniRide since 2024",
   },
 ];
 

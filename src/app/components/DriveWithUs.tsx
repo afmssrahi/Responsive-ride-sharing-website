@@ -45,7 +45,7 @@ export function DriveWithUs() {
 
             <p className="text-gray-500 mb-8" style={{ fontSize: "0.95rem", lineHeight: 1.75 }}>
               No minimum hours. No uniform. No boss. You decide when you drive and
-              when you don't. The average SwiftRide driver keeps 85% of every fare,
+              when you don't. The average UniRide driver keeps 85% of every fare,
               and most who drive part-time earn between BDT 6,000–BDT 12,000 a week.
             </p>
 
@@ -96,7 +96,7 @@ export function DriveWithUs() {
 
             <p className="text-gray-400 text-xs mt-4">
               *Earnings vary by city, time of day, and hours driven. Stats based on
-              2025 SwiftRide Bangladesh platform averages.
+              2025 UniRide Bangladesh platform averages.
             </p>
           </div>
         </div>
