@@ -45,7 +45,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     }
   }
 
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    data = { message: 'Server returned an invalid response (not JSON).' };
+  }
+  
   if (!res.ok) throw new ApiError(res.status, data);
   return data;
 }
@@ -150,6 +156,7 @@ export const rides = {
   cancel: (id: string, reason?: string) => post(`/rides/${id}/cancel`, { reason }),
   start: (id: string) => post(`/rides/${id}/start`),
   complete: (id: string) => post(`/rides/${id}/complete`),
+  pay: (id: string, paymentMethod: string) => post<{ success: boolean; data: any }>(`/rides/${id}/pay`, { paymentMethod }),
   accept: (id: string) => post<{ success: boolean; data: any }>(`/rides/${id}/accept`),
   myCreated: (page = 1) => get<{ success: boolean; rides: any[]; meta: any }>(`/rides/my-created?page=${page}`),
   myJoined: (page = 1) => get<{ success: boolean; rides: any[]; meta: any }>(`/rides/my-joined?page=${page}`),

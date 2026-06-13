@@ -26,6 +26,7 @@ router.post('/:id/cancel', authenticate, ctrl.cancelRide);
 router.post('/:id/start', authenticate, requireRole('DRIVER'), ctrl.startRide);
 router.post('/:id/complete', authenticate, requireRole('DRIVER'), ctrl.completeRide);
 router.post('/:id/accept', authenticate, requireRole('DRIVER'), ctrl.acceptRide);
+router.post('/:id/pay', authenticate, ctrl.payRide);
 router.patch('/:id/approve/:requestId', authenticate, requireRole('DRIVER'), ctrl.approveRequest);
 router.patch('/:id/reject/:requestId', authenticate, requireRole('DRIVER'), ctrl.rejectRequest);
 

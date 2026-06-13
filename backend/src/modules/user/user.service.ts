@@ -38,6 +38,7 @@ export async function getRideHistory(userId: string, page = 1, limit = 10) {
       include: {
         driver: { select: { id: true, name: true, avatar: true } },
         vehicle: true,
+        participants: { select: { userId: true, seatsBooked: true, fareAmount: true } },
         ratings: { where: { fromUserId: userId } },
       },
     }),

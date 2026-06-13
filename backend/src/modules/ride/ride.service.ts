@@ -54,6 +54,7 @@ export async function createRide(userId: string, dto: CreateRideDto) {
       totalSeats: dto.totalSeats,
       availableSeats: dto.totalSeats,
       pricePerSeat: dto.pricePerSeat,
+      totalFare: dto.totalFare,
       paymentMethod: dto.paymentMethod,
       sharingEnabled: dto.sharingEnabled,
       notes: dto.notes,
@@ -113,8 +114,7 @@ export async function getRideById(rideId: string, userId: string) {
       vehicle: true,
       participants: { include: { user: { select: { id: true, name: true, avatar: true } } } },
       shareRequests: {
-        where: { userId },
-        select: { id: true, status: true, seatsRequested: true },
+        include: { user: { select: { id: true, name: true, avatar: true } } },
       },
       route: true,
       ratings: { where: { toUserId: userId } },
@@ -126,7 +126,7 @@ export async function getRideById(rideId: string, userId: string) {
 
 // ── Book Seat (TRANSACTION-SAFE) ──────────────────────────────────────
 export async function bookSeat(rideId: string, userId: string, dto: BookSeatDto) {
-  return prisma.$transaction(async (tx) => {
+  const { request, updatedRide } = await prisma.$transaction(async (tx) => {
     // Lock the ride row
     const ride = await tx.ride.findUnique({ where: { id: rideId } });
     if (!ride) throw new NotFoundError('Ride not found');
@@ -174,13 +174,18 @@ export async function bookSeat(rideId: string, userId: string, dto: BookSeatDto)
       });
     }
 
-    return request;
+    // Return the current ride state (no seat decrement yet — pending approval)
+    const updatedRide = await tx.ride.findUnique({ where: { id: rideId } });
+
+    return { request, updatedRide };
   });
+
+  return { request, updatedRide };
 }
 
 // ── Approve Seat Request (TRANSACTION-SAFE) ───────────────────────────
 export async function approveRequest(rideId: string, requestId: string, driverId: string) {
-  return prisma.$transaction(async (tx) => {
+  const { result, updatedRide } = await prisma.$transaction(async (tx) => {
     const ride = await tx.ride.findUnique({ where: { id: rideId } });
     if (!ride) throw new NotFoundError('Ride not found');
     if (ride.driverId !== driverId) throw new ForbiddenError('Not your ride');
@@ -201,10 +206,16 @@ export async function approveRequest(rideId: string, requestId: string, driverId
     });
 
     // Decrement available seats
-    await tx.ride.update({
+    const updatedRide = await tx.ride.update({
       where: { id: rideId },
       data: { availableSeats: { decrement: request.seatsRequested } },
     });
+
+    // If full, mark status as FULL (we use CONFIRMED but availableSeats=0)
+    // Mark ride as full when no seats remain
+    const finalRide = updatedRide.availableSeats === 0
+      ? await tx.ride.update({ where: { id: rideId }, data: { status: 'CONFIRMED' } })
+      : updatedRide;
 
     // Create participant record
     const fare = ride.pricePerSeat ? ride.pricePerSeat * request.seatsRequested : undefined;
@@ -235,8 +246,10 @@ export async function approveRequest(rideId: string, requestId: string, driverId
       },
     });
 
-    return { success: true };
+    return { result: { success: true }, updatedRide: finalRide };
   });
+
+  return { result, updatedRide };
 }
 
 // ── Reject Seat Request ───────────────────────────────────────────────
@@ -262,6 +275,9 @@ export async function rejectRequest(rideId: string, requestId: string, driverId:
       data: { rideId },
     },
   });
+
+  // Return updated ride for socket broadcast
+  return prisma.ride.findUnique({ where: { id: rideId } });
 }
 
 // ── Cancel Ride ───────────────────────────────────────────────────────
@@ -305,6 +321,7 @@ export async function startRide(rideId: string, driverId: string) {
 }
 
 // ── Complete Ride ─────────────────────────────────────────────────────
+// NOTE: Earnings are NOT added here. The user must pay via payRide().
 export async function completeRide(rideId: string, driverId: string) {
   return prisma.$transaction(async (tx) => {
     const ride = await tx.ride.findUnique({ where: { id: rideId }, include: { participants: true } });
@@ -317,14 +334,10 @@ export async function completeRide(rideId: string, driverId: string) {
       data: { status: 'COMPLETED', completedAt: new Date() },
     });
 
-    // Update driver stats
-    const earnings = ride.pricePerSeat
-      ? ride.pricePerSeat * (ride.totalSeats - ride.availableSeats)
-      : ride.totalFare || 0;
-
+    // Only increment ride count (earnings added when user pays)
     await tx.driverProfile.update({
       where: { userId: driverId },
-      data: { totalRides: { increment: 1 }, totalEarnings: { increment: earnings } },
+      data: { totalRides: { increment: 1 } },
     });
 
     // Update participant statuses
@@ -334,6 +347,61 @@ export async function completeRide(rideId: string, driverId: string) {
     });
 
     return completedRide;
+  });
+}
+
+// ── Pay for Ride (user pays after completion) ─────────────────────────
+export async function payRide(rideId: string, userId: string, paymentMethod: string) {
+  return prisma.$transaction(async (tx) => {
+    const ride = await tx.ride.findUnique({
+      where: { id: rideId },
+      include: { participants: true },
+    });
+    if (!ride) throw new NotFoundError('Ride not found');
+    if (ride.status !== 'COMPLETED') throw new BadRequestError('Ride is not completed yet');
+    if (ride.creatorId !== userId) throw new ForbiddenError('Only the ride creator can pay');
+
+    // Calculate fare
+    const fare = ride.pricePerSeat
+      ? ride.pricePerSeat * (ride.totalSeats - ride.availableSeats)
+      : ride.totalFare || 0;
+
+    if (fare <= 0) throw new BadRequestError('No fare to pay');
+
+    // Check if already paid (notes contains 'PAID')
+    if (ride.notes?.includes('PAYMENT_COMPLETED')) {
+      throw new BadRequestError('This ride has already been paid');
+    }
+
+    // Mark ride as paid via notes field
+    const updatedRide = await tx.ride.update({
+      where: { id: rideId },
+      data: {
+        paymentMethod: paymentMethod as any,
+        notes: `PAYMENT_COMPLETED|${paymentMethod}|${fare}|${new Date().toISOString()}`,
+      },
+    });
+
+    // Add earnings to driver
+    if (ride.driverId) {
+      await tx.driverProfile.update({
+        where: { userId: ride.driverId },
+        data: { totalEarnings: { increment: fare } },
+      });
+
+      // Notify driver about payment
+      await tx.notification.create({
+        data: {
+          userId: ride.driverId,
+          title: 'Payment Received! 💰',
+          body: `You received BDT ${fare} for ride to ${ride.dropoffLocation}`,
+          type: 'PAYMENT_RECEIVED',
+          data: { rideId, amount: fare },
+        },
+      });
+    }
+
+    return { ride: updatedRide, amountPaid: fare, paymentMethod };
   });
 }
 
@@ -434,4 +502,3 @@ export async function getPendingRides(page = 1, limit = 20) {
   ]);
   return { rides, meta: paginationMeta(total, page, limit) };
 }
-

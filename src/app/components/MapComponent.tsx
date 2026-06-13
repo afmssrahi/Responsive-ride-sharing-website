@@ -22,6 +22,18 @@ export interface RouteInfo {
   dropoffCoords: { lat: number; lng: number };
 }
 
+export interface ParticipantMarker {
+  id: string;
+  name: string;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  pickupLocation?: string | null;
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
+  dropoffLocation?: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "COMPLETED";
+}
+
 interface MapComponentProps {
   pickupText?: string;
   dropoffText?: string;
@@ -30,6 +42,10 @@ interface MapComponentProps {
   height?: string;
   driverLocation?: { lat: number; lng: number } | null;
   showGeolocationButton?: boolean;
+  /** Participants to show as numbered pickup/dropoff markers (for shared rides) */
+  participants?: ParticipantMarker[];
+  /** Extra waypoints to draw on the route (for multi-stop driver view) */
+  waypoints?: Array<{ lat: number; lng: number; label?: string }>;
 }
 
 // ── Dhaka coordinates ────────────────────────────────────────────────
@@ -132,6 +148,57 @@ const driverIcon = L.divIcon({
   iconAnchor: [18, 18],
 });
 
+function makeParticipantPickupIcon(index: number, status: string) {
+  const color = status === "APPROVED" ? "#16a34a" : status === "PENDING" ? "#d97706" : "#dc2626";
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:24px;height:24px;
+      background:${color};
+      border:2px solid #fff;
+      border-radius:50%;
+      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-size:11px;font-weight:700;font-family:sans-serif;
+    ">${index + 1}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+}
+
+function makeParticipantDropoffIcon(index: number, status: string) {
+  const color = status === "APPROVED" ? "#111827" : status === "PENDING" ? "#92400e" : "#7f1d1d";
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:20px;height:20px;
+      background:${color};
+      border:2px solid #fff;
+      border-radius:4px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-size:10px;font-weight:700;font-family:sans-serif;
+    ">${index + 1}</div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+}
+
+function makeWaypointIcon(label?: string) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:14px;height:14px;
+      background:#8b5cf6;
+      border:2px solid #fff;
+      border-radius:50%;
+      box-shadow:0 2px 6px rgba(139,92,246,0.5);
+    " title="${label || ""}"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
 // ── Geocode ──────────────────────────────────────────────────────────
 async function geocode(text: string): Promise<{ lat: number; lng: number } | null> {
   if (!text || text.trim().length < 2) return null;
@@ -183,6 +250,8 @@ export function MapComponent({
   height = "400px",
   driverLocation = null,
   showGeolocationButton = true,
+  participants = [],
+  waypoints = [],
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -190,6 +259,8 @@ export function MapComponent({
   const dropoffMarkerRef = useRef<L.Marker | null>(null);
   const driverMarkerRef = useRef<L.Marker | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
+  const participantMarkersRef = useRef<L.Marker[]>([]);
+  const waypointMarkersRef = useRef<L.Marker[]>([]);
   const abortRef = useRef(0);
 
   const [geoLoading, setGeoLoading] = useState(false);
@@ -235,6 +306,51 @@ export function MapComponent({
       driverMarkerRef.current = null;
     }
   }, [driverLocation]);
+
+  // ── Render participant pickup/dropoff markers ─────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Clear old participant markers
+    participantMarkersRef.current.forEach(m => m.remove());
+    participantMarkersRef.current = [];
+
+    participants.forEach((p, i) => {
+      if (p.pickupLat && p.pickupLng) {
+        const pickupM = L.marker([p.pickupLat, p.pickupLng], {
+          icon: makeParticipantPickupIcon(i, p.status),
+        })
+          .addTo(map)
+          .bindPopup(`<b>${p.name}</b><br/>📍 Pickup${p.pickupLocation ? `: ${p.pickupLocation}` : ""}<br/><span style="font-size:11px;color:${p.status === "APPROVED" ? "#16a34a" : "#d97706"}">${p.status}</span>`);
+        participantMarkersRef.current.push(pickupM);
+      }
+      if (p.dropoffLat && p.dropoffLng) {
+        const dropoffM = L.marker([p.dropoffLat, p.dropoffLng], {
+          icon: makeParticipantDropoffIcon(i, p.status),
+        })
+          .addTo(map)
+          .bindPopup(`<b>${p.name}</b><br/>🏁 Drop-off${p.dropoffLocation ? `: ${p.dropoffLocation}` : ""}`);
+        participantMarkersRef.current.push(dropoffM);
+      }
+    });
+  }, [participants]);
+
+  // ── Render waypoint markers ───────────────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    waypointMarkersRef.current.forEach(m => m.remove());
+    waypointMarkersRef.current = [];
+
+    waypoints.forEach(wp => {
+      const m = L.marker([wp.lat, wp.lng], { icon: makeWaypointIcon(wp.label) })
+        .addTo(map);
+      if (wp.label) m.bindPopup(`<b>${wp.label}</b>`);
+      waypointMarkersRef.current.push(m);
+    });
+  }, [waypoints]);
 
   // Geocode and route whenever pickup/dropoff text changes
   useEffect(() => {

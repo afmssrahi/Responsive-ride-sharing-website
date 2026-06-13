@@ -11,6 +11,7 @@ export const createRideSchema = z.object({
   departureTime: z.string().datetime().optional(),
   totalSeats: z.coerce.number().min(1).max(15).default(1),
   pricePerSeat: z.coerce.number().positive().optional(),
+  totalFare: z.coerce.number().positive().optional(),
   paymentMethod: z.enum(['CASH', 'BKASH', 'NAGAD', 'ROCKET', 'CARD']).default('CASH'),
   vehicleId: z.string().optional(),
   notes: z.string().optional(),

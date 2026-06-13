@@ -3,6 +3,8 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { GetStartedPage } from "./pages/GetStartedPage";
 import { FindRidePage } from "./pages/FindRidePage";
+import { OfferRidePage } from "./pages/OfferRidePage";
+import { RideDetailPage } from "./pages/RideDetailPage";
 import { DriveRequirementsPage } from "./pages/DriveRequirementsPage";
 import { DriverApplyPage } from "./pages/DriverApplyPage";
 import { DriverApplySubmittedPage } from "./pages/DriverApplySubmittedPage";
@@ -29,6 +31,8 @@ export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/get-started", element: <GetStartedPage /> },
   { path: "/find-ride", element: <FindRidePage /> },
+  { path: "/offer-ride", element: <OfferRidePage /> },
+  { path: "/ride/:rideId", element: <RideDetailPage /> },
   { path: "/drive/requirements", element: <DriveRequirementsPage /> },
   { path: "/drive/apply", element: <DriverApplyPage /> },
   { path: "/drive/apply/submitted", element: <DriverApplySubmittedPage /> },
